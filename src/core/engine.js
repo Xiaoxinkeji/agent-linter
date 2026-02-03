@@ -3,13 +3,14 @@ const Logger = require('../utils/logger');
 const dependencyCheck = require('../rules/dependency-check');
 const securityScan = require('../rules/security-scan');
 const envCheck = require('../rules/env-check');
-const safetyCheck = require('../rules/safety-check'); // Import new rule
+const safetyCheck = require('../rules/safety-check');
+const coherenceCheck = require('../rules/moltbook-coherence-check'); // Import new rule
 
 class LinterEngine {
   constructor(options = {}) {
     this.options = options;
-    // Add the new safetyCheck rule
-    this.rules = [dependencyCheck, securityScan, envCheck, safetyCheck];
+    // Add the new coherenceCheck rule
+    this.rules = [dependencyCheck, securityScan, envCheck, safetyCheck, coherenceCheck];
   }
 
   async lintFile(filePath, projectRoot) {
