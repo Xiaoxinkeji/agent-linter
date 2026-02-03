@@ -1,17 +1,20 @@
-const fs = require('fs');
+const fs = require('fs').promises; // Change to async fs
 const Logger = require('../utils/logger');
 const dependencyCheck = require('../rules/dependency-check');
 const securityScan = require('../rules/security-scan');
 const envCheck = require('../rules/env-check');
+const safetyCheck = require('../rules/safety-check'); // Import new rule
 
 class LinterEngine {
   constructor(options = {}) {
     this.options = options;
-    this.rules = [dependencyCheck, securityScan, envCheck];
+    // Add the new safetyCheck rule
+    this.rules = [dependencyCheck, securityScan, envCheck, safetyCheck];
   }
 
   async lintFile(filePath, projectRoot) {
-    const content = fs.readFileSync(filePath, 'utf8');
+    // Change to asynchronous read
+    const content = await fs.readFile(filePath, 'utf8');
     const context = { projectRoot, filePath };
     
     const result = {

@@ -38,6 +38,9 @@ async function runTestSuite() {
 
         // Test Case 2: Missing Dependency (1 error from dependency-check)
         await runTest('Missing Dependency Check', 'fixtures/missing-dep.js', 1, 0);
+
+        // Test Case 3: Unsafe Synchronous Calls (3 errors from safety-check)
+        await runTest('Unsafe Sync Calls Check', 'fixtures/unsafe.js', 3, 0);
         
         // Add more tests here...
 
