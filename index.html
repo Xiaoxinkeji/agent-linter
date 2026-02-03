@@ -5,57 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agent Linter | Code Safety for AI</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #333; }
-        header { text-align: center; margin-bottom: 3rem; }
-        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #2c3e50; }
-        .tagline { font-size: 1.2rem; color: #666; font-weight: 300; }
-        .install-box { background: #f4f6f8; padding: 1.5rem; border-radius: 8px; text-align: center; font-family: monospace; font-size: 1.2rem; margin: 2rem 0; border: 1px solid #e1e4e8; }
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
-        .feature-card { padding: 1.5rem; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
-        a.button { display: inline-block; background: #2ecc71; color: white; padding: 0.8rem 1.5rem; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background 0.2s; }
-        a.button:hover { background: #27ae60; }
-        footer { margin-top: 4rem; text-align: center; color: #999; font-size: 0.9rem; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: var(--text); background: var(--bg); }
+        header { text-align: center; margin-bottom: 4rem; padding: 2rem 0; }
+        h1 { font-size: 3rem; margin-bottom: 0.5rem; color: #0f172a; letter-spacing: -0.05rem; }
+        .tagline { font-size: 1.5rem; color: #64748b; font-weight: 300; }
+        .install-box { background: #1e293b; color: #fff; padding: 1.5rem; border-radius: 12px; text-align: center; font-family: 'Monaco', 'Consolas', monospace; font-size: 1.2rem; margin: 2rem auto; max-width: 500px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-top: 3rem; }
+        .feature-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: transform 0.2s; }
+        .feature-card:hover { transform: translateY(-5px); }
+        .feature-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+        .feature-card h3 { margin: 0 0 0.5rem 0; color: #334155; }
+        .badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.8rem; font-weight: bold; margin-bottom: 1rem; }
+        a.button { display: inline-block; background: var(--primary); color: white; padding: 1rem 2rem; text-decoration: none; border-radius: 8px; font-weight: bold; transition: opacity 0.2s; margin-top: 1rem; }
+        a.button:hover { opacity: 0.9; }
+        footer { margin-top: 5rem; text-align: center; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 2rem; }
     </style>
 </head>
 <body>
     <header>
+        <span class="badge">v1.1 RELEASED</span>
         <h1>🕵️‍♂️ Agent Linter</h1>
-        <p class="tagline">Stop AI agents from crashing on missing dependencies.</p>
+        <p class="tagline">The static analysis tool for AI Agents.</p>
         <div class="install-box">
             npm install -g agent-linter
         </div>
-        <a href="https://github.com/Xiaoxinkeji/agent-linter" class="button">View on GitHub</a>
+        <a href="https://github.com/Xiaoxinkeji/agent-linter" class="button">GitHub Repo</a>
     </header>
 
     <section>
         <h2>Why Agent Linter?</h2>
-        <p>AI agents are smart, but they make simple mistakes. They write code that tries to require packages that aren't installed, or read files that don't exist. <strong>Agent Linter</strong> catches these errors <em>before</em> runtime.</p>
+        <p>Agents are prone to specific types of coding errors: missing dependencies, hallucinated file paths, and hardcoded secrets. Agent Linter is the safety net that runs <em>before</em> execution.</p>
     </section>
 
     <section>
-        <h2>Features</h2>
         <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🔧</div>
+                <h3>Auto-Fix Mode</h3>
+                <p>Use <code>--fix</code> to automatically <code>npm install</code> detected missing packages.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Security Scan</h3>
+                <p>Detects hardcoded API keys and secrets before they are committed.</p>
+            </div>
             <div class="feature-card">
                 <div class="feature-icon">📦</div>
                 <h3>Dependency Check</h3>
-                <p>Detects missing `npm` packages automatically.</p>
+                <p>Verifies all <code>require()</code> calls against installed modules.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">📂</div>
-                <h3>Path Verification</h3>
-                <p>Warns when reading non-existent files.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <h3>Zero Config</h3>
-                <p>No config files. Just run and fix.</p>
+                <div class="feature-icon">📝</div>
+                <h3>Env Validation</h3>
+                <p>Ensures usage of <code>process.env</code> is backed by a <code>.env</code> file.</p>
             </div>
         </div>
     </section>
 
     <footer>
-        <p>Created by <a href="https://github.com/Xiaoxinkeji">Xiaoxinkeji</a> & Xiao Lu (OpenClaw)</p>
+        <p>Built with ❤️ by <strong>OpenClaw & Xiaoxinkeji</strong></p>
+        <p>Make your agents safer today.</p>
     </footer>
 </body>
 </html>
