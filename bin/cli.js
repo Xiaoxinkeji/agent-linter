@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises; // Use async fs
 const { execSync } = require('child_process');
 const LinterEngine = require('../src/core/engine');
 const Logger = require('../src/utils/logger');
@@ -9,22 +9,42 @@ const args = process.argv.slice(2);
 const fixMode = args.includes('--fix');
 const targetArg = args.find(a => !a.startsWith('-')) || '.';
 
-// Recursive file walker
-function getAllFiles(dirPath, arrayOfFiles) {
-  const files = fs.readdirSync(dirPath);
-  arrayOfFiles = arrayOfFiles || [];
+// File extensions to include in recursive scan
+const ALLOWED_EXTENSIONS = new Set(['.js', '.ts', '.mjs', '.cjs', '.jsx', '.tsx']);
 
-  files.forEach(function(file) {
-    if (file === 'node_modules' || file === '.git') return; // Skip ignored folders
-    const fullPath = path.join(dirPath, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
-    } else {
-      if (file.endsWith('.js') || file.endsWith('.ts') || file.endsWith('.mjs')) {
+/**
+ * Recursively gets all relevant file paths from a directory.
+ * @param {string} dirPath 
+ * @param {string[]} arrayOfFiles 
+ * @returns {Promise<string[]>}
+ */
+async function getAllFiles(dirPath, arrayOfFiles = []) {
+  try {
+    const files = await fs.readdir(dirPath);
+
+    for (const file of files) {
+      if (file === 'node_modules' || file === '.git') continue; // Skip ignored folders
+      
+      const fullPath = path.join(dirPath, file);
+      let stat;
+      try {
+        stat = await fs.lstat(fullPath); // Use lstat to check for symlinks
+      } catch (e) {
+        Logger.warn(`Could not stat path: ${fullPath}. Skipping.`);
+        continue;
+      }
+
+      if (stat.isDirectory()) {
+        arrayOfFiles = await getAllFiles(fullPath, arrayOfFiles);
+      } else if (stat.isFile() && ALLOWED_EXTENSIONS.has(path.extname(file))) {
         arrayOfFiles.push(fullPath);
       }
     }
-  });
+  } catch (e) {
+    // Handle read error for the directory itself (e.g., permissions)
+    Logger.error(`Failed to read directory ${dirPath}: ${e.message}`);
+  }
+  
   return arrayOfFiles;
 }
 
@@ -33,17 +53,32 @@ async function main() {
   
   const absPath = path.resolve(targetArg);
   let files = [];
+  let isDirectory = false;
 
   try {
-    if (fs.statSync(absPath).isDirectory()) {
-      Logger.info(`Scanning directory: ${absPath} (Recursive)`);
-      files = getAllFiles(absPath);
-    } else {
-      files = [absPath];
-    }
+    const stats = await fs.stat(absPath);
+    isDirectory = stats.isDirectory();
   } catch (e) {
-    Logger.error(`Path not found: ${absPath}`);
+    Logger.error(`Path not found or accessible: ${absPath}`);
     process.exit(1);
+  }
+
+  if (isDirectory) {
+    Logger.info(`Scanning directory: ${absPath} (Recursive)`);
+    files = await getAllFiles(absPath);
+  } else {
+    // Check if single file is supported extension before adding
+    if (ALLOWED_EXTENSIONS.has(path.extname(absPath))) {
+        files = [absPath];
+    } else {
+        Logger.error(`File extension not supported: ${path.extname(absPath)}. Supported: ${Array.from(ALLOWED_EXTENSIONS).join(', ')}`);
+        process.exit(1);
+    }
+  }
+
+  if (files.length === 0) {
+      Logger.warn('No supported files found to scan.');
+      process.exit(0);
   }
 
   Logger.info(`Found ${files.length} files to scan.`);
@@ -53,9 +88,9 @@ async function main() {
   let hasErrors = false;
 
   for (const file of files) {
-    // Logger.info(`Scanning ${path.relative(process.cwd(), file)}...`);
     
     try {
+      // Pass file path and the base project directory for context
       const result = await engine.lintFile(file, process.cwd());
       
       if (result.meta.missingPackages) {
@@ -69,7 +104,7 @@ async function main() {
       }
       
       if (result.warnings.length > 0) {
-        // Warning logic if needed
+        // Warning logic
       }
 
     } catch (e) {
@@ -83,15 +118,14 @@ async function main() {
       Logger.header('Auto-Fixing...');
       const pkgList = Array.from(allMissingPackages).join(' ');
       
-      // Safety Check: Don't install obvious garbage? (For now, just warn)
       Logger.info(`Installing detected dependencies: ${pkgList}`);
       
       try {
         execSync(`npm install ${pkgList}`, { stdio: 'inherit' });
         Logger.success('Packages installed successfully!');
-        hasErrors = false; // Considered fixed?
+        hasErrors = false; // Dependency issues are considered fixed
       } catch (e) {
-        Logger.error('Install failed. Please check package names.');
+        Logger.error('Install failed. Please check package names and permissions.');
       }
     } else {
       Logger.header('Suggestions');

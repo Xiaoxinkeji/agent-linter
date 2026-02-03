@@ -11,15 +11,15 @@ module.exports = {
     const missingPackages = new Set();
     const packagesFound = new Set();
     
-    // 1. CommonJS: require('pkg')
+    // 1. CommonJS: require()
     const requireMatches = content.matchAll(/require\(['"](@?[\w-]+\/?[\w-]*)['"]\)/g);
     for (const match of requireMatches) packagesFound.add(match[1]);
 
-    // 2. ESM: import ... from 'pkg'
+    // 2. ESM: import ... from 
     const importMatches = content.matchAll(/from\s+['"](@?[\w-]+\/?[\w-]*)['"]/g);
     for (const match of importMatches) packagesFound.add(match[1]);
 
-    // 3. Dynamic Import: import('pkg')
+    // 3. Dynamic Import: import()
     const dynImportMatches = content.matchAll(/import\(['"](@?[\w-]+\/?[\w-]*)['"]\)/g);
     for (const match of dynImportMatches) packagesFound.add(match[1]);
     
