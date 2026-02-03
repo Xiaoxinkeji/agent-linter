@@ -4,26 +4,34 @@ const path = require('path');
 module.exports = {
   id: 'dependency-check',
   name: 'Dependency Availability',
-  description: 'Checks if required packages are installed in node_modules',
+  description: 'Checks if required/imported packages are installed',
   
   run: (content, context) => {
     const errors = [];
     const missingPackages = new Set();
+    const packagesFound = new Set();
     
-    // Improved regex to capture require('pkg') and require("pkg")
+    // 1. CommonJS: require('pkg')
     const requireMatches = content.matchAll(/require\(['"](@?[\w-]+\/?[\w-]*)['"]\)/g);
+    for (const match of requireMatches) packagesFound.add(match[1]);
+
+    // 2. ESM: import ... from 'pkg'
+    const importMatches = content.matchAll(/from\s+['"](@?[\w-]+\/?[\w-]*)['"]/g);
+    for (const match of importMatches) packagesFound.add(match[1]);
+
+    // 3. Dynamic Import: import('pkg')
+    const dynImportMatches = content.matchAll(/import\(['"](@?[\w-]+\/?[\w-]*)['"]\)/g);
+    for (const match of dynImportMatches) packagesFound.add(match[1]);
     
     // Built-in Node.js modules to ignore
     const builtins = [
       'assert', 'buffer', 'child_process', 'cluster', 'crypto', 'dgram', 'dns', 
       'domain', 'events', 'fs', 'http', 'https', 'net', 'os', 'path', 'punycode', 
       'querystring', 'readline', 'stream', 'string_decoder', 'timers', 'tls', 
-      'tty', 'url', 'util', 'v8', 'vm', 'zlib', 'worker_threads'
+      'tty', 'url', 'util', 'v8', 'vm', 'zlib', 'worker_threads', 'inspector', 'console'
     ];
 
-    for (const match of requireMatches) {
-      const pkg = match[1];
-      
+    for (const pkg of packagesFound) {
       // Skip relative paths
       if (pkg.startsWith('.') || pkg.startsWith('/')) continue;
       
@@ -34,8 +42,7 @@ module.exports = {
         require.resolve(pkg, { paths: [context.projectRoot] });
       } catch (e) {
         errors.push({
-          line: 0, // Todo: Add line number detection
-          message: `Missing package: "${pkg}". Not found in node_modules.`
+          message: `Missing package: "${pkg}". Found in code but not installed.`
         });
         missingPackages.add(pkg);
       }

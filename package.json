@@ -1,6 +1,6 @@
 {
   "name": "agent-linter",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A lightweight code quality checker for AI Agents to prevent common runtime errors.",
   "main": "src/core/engine.js",
   "bin": {
