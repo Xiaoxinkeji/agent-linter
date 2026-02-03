@@ -1,0 +1,15 @@
+{
+  "name": "agent-linter",
+  "version": "1.0.0",
+  "description": "A lightweight code quality checker for AI Agents to prevent common runtime errors.",
+  "main": "index.js",
+  "bin": {
+    "agent-linter": "./index.js"
+  },
+  "scripts": {
+    "test": "node index.js index.js"
+  },
+  "keywords": ["ai", "agent", "linter", "tool", "openclaw"],
+  "author": "Xiaoxinkeji",
+  "license": "MIT"
+}

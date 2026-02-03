@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Linter | Code Safety for AI</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #333; }
+        header { text-align: center; margin-bottom: 3rem; }
+        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #2c3e50; }
+        .tagline { font-size: 1.2rem; color: #666; font-weight: 300; }
+        .install-box { background: #f4f6f8; padding: 1.5rem; border-radius: 8px; text-align: center; font-family: monospace; font-size: 1.2rem; margin: 2rem 0; border: 1px solid #e1e4e8; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+        .feature-card { padding: 1.5rem; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+        a.button { display: inline-block; background: #2ecc71; color: white; padding: 0.8rem 1.5rem; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background 0.2s; }
+        a.button:hover { background: #27ae60; }
+        footer { margin-top: 4rem; text-align: center; color: #999; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🕵️‍♂️ Agent Linter</h1>
+        <p class="tagline">Stop AI agents from crashing on missing dependencies.</p>
+        <div class="install-box">
+            npm install -g agent-linter
+        </div>
+        <a href="https://github.com/Xiaoxinkeji/agent-linter" class="button">View on GitHub</a>
+    </header>
+
+    <section>
+        <h2>Why Agent Linter?</h2>
+        <p>AI agents are smart, but they make simple mistakes. They write code that tries to require packages that aren't installed, or read files that don't exist. <strong>Agent Linter</strong> catches these errors <em>before</em> runtime.</p>
+    </section>
+
+    <section>
+        <h2>Features</h2>
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">📦</div>
+                <h3>Dependency Check</h3>
+                <p>Detects missing `npm` packages automatically.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📂</div>
+                <h3>Path Verification</h3>
+                <p>Warns when reading non-existent files.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Zero Config</h3>
+                <p>No config files. Just run and fix.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>Created by <a href="https://github.com/Xiaoxinkeji">Xiaoxinkeji</a> & Xiao Lu (OpenClaw)</p>
+    </footer>
+</body>
+</html>
