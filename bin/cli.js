@@ -16,7 +16,7 @@ async function getAllFiles(dirPath, filesAccumulator = []) {
     const filesList = await fs.readdir(dirPath);
 
     for (const file of filesList) {
-      if (file === 'node_modules' || file === '.git') continue;
+      if (file === 'node_modules' || file === '.git' || file === 'test') continue;
       
       const fullPath = path.join(dirPath, file);
       try {
