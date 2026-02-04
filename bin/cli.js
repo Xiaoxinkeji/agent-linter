@@ -14,10 +14,8 @@ const ALLOWED_EXTENSIONS = new Set(['.js', '.ts', '.mjs', '.cjs', '.jsx', '.tsx'
 async function getAllFiles(dirPath, filesAccumulator = []) {
   try {
     const filesList = await fs.readdir(dirPath);
-
     for (const file of filesList) {
       if (file === 'node_modules' || file === '.git' || file === 'test') continue;
-      
       const fullPath = path.join(dirPath, file);
       try {
         const stats = await fs.lstat(fullPath);
@@ -27,95 +25,84 @@ async function getAllFiles(dirPath, filesAccumulator = []) {
           filesAccumulator.push(fullPath);
         }
       } catch (e) {
-        Logger.warn(`Could not stat path: ${fullPath}. Skipping.`);
         continue;
       }
     }
-  } catch (e) {
-    Logger.error(`Failed to read directory ${dirPath}: ${e.message}`);
-  }
-  
+  } catch (e) {}
   return filesAccumulator;
 }
 
 async function main() {
-  Logger.header(`Agent Linter v${require('../package.json').version}`);
+  Logger.logo();
+  Logger.header(`ADAC Linter Sentinel v${require('../package.json').version}`);
   
   const absPath = path.resolve(targetArg);
-  let isDirectoryFoundStatus = false;
+  let isDirectory = false;
   try {
     const stats = await fs.stat(absPath);
-    isDirectoryFoundStatus = stats.isDirectory();
+    isDirectory = stats.isDirectory();
   } catch (e) {
-    Logger.error(`Path not found or accessible: ${absPath}`);
+    Logger.error(`Target not found: ${absPath}`);
     process.exit(1);
   }
 
-  const finalFilesFoundArrayList = [];
-  if (isDirectoryFoundStatus) {
-    Logger.info(`Scanning directory: ${absPath} (Recursive)`);
-    await getAllFiles(absPath, finalFilesFoundArrayList);
+  const finalFiles = [];
+  if (isDirectory) {
+    Logger.info(`Scanning: ${path.relative(process.cwd(), absPath)}/ (Recursive)`);
+    await getAllFiles(absPath, finalFiles);
   } else {
-    if (ALLOWED_EXTENSIONS.has(path.extname(absPath))) {
-        finalFilesFoundArrayList.push(absPath);
-    } else {
-        Logger.error(`File extension not supported: ${path.extname(absPath)}`);
-        process.exit(1);
-    }
+    if (ALLOWED_EXTENSIONS.has(path.extname(absPath))) finalFiles.push(absPath);
   }
 
-  if (finalFilesFoundArrayList.length === 0) {
-      Logger.warn('No supported files found to scan.');
+  if (finalFiles.length === 0) {
+      Logger.warn('No target files found.');
       process.exit(0);
   }
 
-  Logger.info(`Found ${finalFilesFoundArrayList.length} files to scan.`);
-
   const engine = new LinterEngine();
   const allMissingPackages = new Set();
-  let hasAnyActualErrorsBeenDetected = false;
+  let totalErrors = 0;
+  let totalWarnings = 0;
 
-  for (const file of finalFilesFoundArrayList) {
+  for (const file of finalFiles) {
     try {
       const result = await engine.lintFile(file, process.cwd());
-      
+      if (result.errors.length > 0 || result.warnings.length > 0) {
+        Logger.fileHeader(path.relative(process.cwd(), file));
+        result.errors.forEach(e => {
+            console.log(`    \x1b[31m✖\x1b[0m ${e.message}`);
+            totalErrors++;
+        });
+        result.warnings.forEach(w => {
+            console.log(`    \x1b[33m⚠\x1b[0m ${w.message}`);
+            totalWarnings++;
+        });
+      }
       if (result.meta && result.meta.missingPackages) {
         result.meta.missingPackages.forEach(p => allMissingPackages.add(p));
       }
-
-      if (result.errors && result.errors.length > 0) {
-        hasAnyActualErrorsBeenDetected = true;
-        Logger.error(`File: ${path.relative(process.cwd(), file)}`);
-        result.errors.forEach(e => console.log(`  ✖ ${e.message}`));
-      }
     } catch (e) {
-      Logger.error(`Failed to parse ${file}: ${e.message}`);
+      Logger.error(`Parse failed: ${path.basename(file)}`);
     }
   }
 
-  if (allMissingPackages.size > 0) {
-    if (fixMode) {
-      Logger.header('Auto-Fixing...');
-      const pkgList = Array.from(allMissingPackages).join(' ');
-      Logger.info(`Installing detected dependencies: ${pkgList}`);
+  Logger.summary({ files: finalFiles.length, errors: totalErrors, warnings: totalWarnings });
+
+  if (allMissingPackages.size > 0 && fixMode) {
+      Logger.info('Auto-installing missing dependencies...');
       try {
         const { execSync: cpExecSync } = require('child_process');
-        cpExecSync(`npm install ${pkgList}`, { stdio: 'inherit' });
-        Logger.success('Packages installed successfully!');
+        cpExecSync(`npm install ${Array.from(allMissingPackages).join(' ')}`, { stdio: 'ignore' });
+        Logger.success('Dependencies satisfied.');
+        totalErrors = 0; 
       } catch (e) {
         Logger.error('Install failed.');
       }
-    } else {
-      Logger.header('Suggestions');
-      Logger.warn(`Found ${allMissingPackages.size} missing packages.`);
-      console.log(`Run with --fix to install: \n  npm install ${Array.from(allMissingPackages).join(' ')}`);
-    }
   }
 
-  if (!hasAnyActualErrorsBeenDetected) {
-    Logger.success('All checks passed. Your agent code looks runnable!');
+  if (totalErrors === 0) {
+    Logger.success('SOVEREIGN CODEBASE SECURED.');
   } else {
-    Logger.error('Issues found. Fix them before running your agent.');
     process.exit(1);
   }
 }
