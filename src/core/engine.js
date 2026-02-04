@@ -1,20 +1,40 @@
-const fs = require('fs').promises; // Change to async fs
+const fs = require('fs').promises;
+const path = require('path');
 const Logger = require('../utils/logger');
-const dependencyCheck = require('../rules/dependency-check');
-const securityScan = require('../rules/security-scan');
-const envCheck = require('../rules/env-check');
-const safetyCheck = require('../rules/safety-check');
-const coherenceCheck = require('../rules/moltbook-coherence-check'); // Import new rule
 
 class LinterEngine {
   constructor(options = {}) {
     this.options = options;
-    // Add the new coherenceCheck rule
-    this.rules = [dependencyCheck, securityScan, envCheck, safetyCheck, coherenceCheck];
+    this.rules = [];
+  }
+
+  /**
+   * Automatically load all rules from the rules directory
+   */
+  async loadRules() {
+    const rulesDir = path.join(__dirname, '../rules');
+    const files = await fs.readdir(rulesDir);
+    
+    this.rules = [];
+    for (const file of files) {
+      if (file.endsWith('.js')) {
+        try {
+          const rule = require(path.join(rulesDir, file));
+          if (rule.run && typeof rule.run === 'function') {
+            this.rules.push(rule);
+          }
+        } catch (e) {
+          Logger.error(`Failed to load rule from ${file}: ${e.message}`);
+        }
+      }
+    }
   }
 
   async lintFile(filePath, projectRoot) {
-    // Change to asynchronous read
+    if (this.rules.length === 0) {
+      await this.loadRules();
+    }
+
     const content = await fs.readFile(filePath, 'utf8');
     const context = { projectRoot, filePath };
     
@@ -26,13 +46,16 @@ class LinterEngine {
     };
 
     for (const rule of this.rules) {
-      const outcome = rule.run(content, context);
-      
-      if (outcome.errors) result.errors.push(...outcome.errors);
-      if (outcome.warnings) result.warnings.push(...outcome.warnings);
-      if (outcome.meta) {
-        // Merge meta (e.g. missingPackages)
-        result.meta = { ...result.meta, ...outcome.meta };
+      try {
+        const outcome = rule.run(content, context);
+        
+        if (outcome.errors) result.errors.push(...outcome.errors);
+        if (outcome.warnings) result.warnings.push(...outcome.warnings);
+        if (outcome.meta) {
+          result.meta = { ...result.meta, ...outcome.meta };
+        }
+      } catch (e) {
+        Logger.error(`Error running rule "${rule.name || 'unknown'}": ${e.message}`);
       }
     }
 
