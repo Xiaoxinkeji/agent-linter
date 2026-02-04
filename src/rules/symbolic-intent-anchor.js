@@ -28,11 +28,13 @@ module.exports = {
       }
     }
 
-    // Pattern: Suspicious obfuscation (highly randomized variable names in security context)
-    const entropyRegex = /\b[a-z0-9]{20,}\s*=/gi;
-    if (entropyRegex.test(content) && !context.filePath.includes('test')) {
+    // Pattern: Suspicious obfuscation (extremely long randomized variable names)
+    // Only trigger on very long, non-indented assignments to minimize false positives on complex regexes
+    const obfuscationPattern = /^[a-zA-Z0-9_$]{40,}\s*=/m;
+    
+    if (obfuscationPattern.test(content) && !context.filePath.includes('test')) {
       errors.push({
-        message: 'Integrity Risk: Detected high-entropy identifiers. Potential obfuscation attempt in a sovereign security context.',
+        message: 'Integrity Risk: Detected potential obfuscated identifiers (length > 40 at root level).',
       });
     }
 
