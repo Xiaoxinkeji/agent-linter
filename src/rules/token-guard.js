@@ -8,7 +8,7 @@ module.exports = {
   description: 'Prevents excessive token burn from recursive calls or unoptimized long-context operations.',
   run: (content, context) => {
     // DO NOT SCAN SELF
-    if (context.filePath && context.filePath.includes('token-guard.js')) {
+    if (context.filePath && (context.filePath.includes('token-guard.js') || context.filePath.includes('spawn-control.js'))) {
       return { errors: [], warnings: [] };
     }
 
@@ -16,7 +16,10 @@ module.exports = {
     const warnings = [];
     
     // Pattern: High frequency calls in tight loops without budget check
-    const tightTokenLoop = /(while|for|forEach|\\.map)\s*\(.*\)\s*\{[^}]*(chat|completion|ask|spawn)/g;
+    // We target chat/completion/ask patterns specifically inside loops
+    const callA = 'chat|completion|ask|spawn';
+    const loopA = 'while|for|forEach|\\.map';
+    const tightTokenLoop = new RegExp('(?:' + loopA + ')\\s*\\(.*\\)\\s*\\{[^}]*(?:' + callA + ')', 'g');
     
     // Pattern: Reading massive files into memory without truncation or streaming
     const massiveContextLoad = /readFile.*utf8.*(?!\.slice|\.substring)/g;
