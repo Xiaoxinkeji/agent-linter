@@ -15,24 +15,29 @@ module.exports = {
     const errors = [];
     const warnings = [];
     
-    // Pattern: sessions_spawn inside a loop or function without clear terminal condition
-    const recursiveSpawnRegex = new RegExp(['sessions_spawn', '.*', 'while|for|forEach'].join(''), 'gi');
+    // Check for sessions_spawn inside loop-like patterns
+    // We target assignments or calls that look like:
+    // for (...) { ... sessions_spawn ... }
+    const spawnCall = 'sessions_spawn';
     
-    // Pattern: sessions_spawn without a timeout specified
-    const spawnWithoutTimeoutRegex = /sessions_spawn\s*\(\s*\{(?![^}]*runTimeoutSeconds)[^}]*\}\s*\)/gi;
+    // Very specific match: Check if 'sessions_spawn' appears on a line 
+    // that follows a line starting with for/while/forEach (multiline regex)
+    const recursivePattern = new RegExp('(?:for|while|forEach|\\.map)\\s*\\(.*\\)\\s*\\{[^}]*' + spawnCall, 'g');
 
-    if (recursiveSpawnRegex.test(content)) {
+    if (recursivePattern.test(content)) {
       errors.push({
-        message: 'CRITICAL: Potential Agent Proliferation. Detected sub-agent spawning inside a loop. This risks an exponential resource explosion.',
+        message: 'CRITICAL: Potential Agent Proliferation. Detected sessions_spawn potentially within a recursive or loop-based control structure.',
       });
     }
 
-    if (spawnWithoutTimeoutRegex.test(content)) {
+    // Check for missing timeout
+    const timeoutPattern = new RegExp(spawnCall + '\\s*\\(\\s*\\{(?![^}]*runTimeoutSeconds)[^}]*\\}\\s*\\)', 'g');
+    if (timeoutPattern.test(content)) {
       warnings.push({
-        message: 'Resource Warning: Sub-agent spawned without a defined runTimeoutSeconds. This may lead to orphaned background processes.',
+        message: 'Resource Warning: Sub-agent spawned without a defined runTimeoutSeconds.',
       });
     }
 
-    return { errors, warnings };
+    return { errors: errors, warnings: warnings };
   }
 };
