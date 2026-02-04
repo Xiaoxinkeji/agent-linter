@@ -1,7 +1,7 @@
 {
   "name": "agent-linter",
-  "version": "1.2.0",
-  "description": "A lightweight code quality checker for AI Agents to prevent common runtime errors.",
+  "version": "2.1.0",
+  "description": "A lightweight code quality checker for AI Agents to prevent common runtime errors and security exploits.",
   "main": "src/core/engine.js",
   "bin": {
     "agent-linter": "./bin/cli.js"
@@ -15,7 +15,9 @@
     "agent",
     "linter",
     "tool",
-    "openclaw"
+    "openclaw",
+    "security",
+    "moltbook"
   ],
   "author": "Xiaoxinkeji",
   "license": "MIT"
