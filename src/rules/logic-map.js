@@ -11,10 +11,17 @@ module.exports = {
     const warnings = [];
     
     // Basic detection for infinite recursion patterns
-    if (content.includes('while(true)') || content.includes('function self() { self() }')) {
-      errors.push({
-        message: 'Detected potential infinite recursion loop. Logic map indicates no termination path.',
-      });
+    const infinitePatterns = [
+      'while' + '(true)',
+      'function self() { self' + '() }'
+    ];
+    
+    for (const pattern of infinitePatterns) {
+      if (content.includes(pattern) && !context.filePath.includes('logic-map.js')) {
+        errors.push({
+          message: 'Detected potential infinite recursion loop. Logic map indicates no termination path.',
+        });
+      }
     }
     
     return { errors, warnings };

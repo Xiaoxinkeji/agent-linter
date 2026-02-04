@@ -19,7 +19,8 @@ class LinterEngine {
     for (const file of files) {
       if (file.endsWith('.js')) {
         try {
-          const rule = require(path.join(rulesDir, file));
+          const rulePath = path.join(rulesDir, file);
+          const rule = require(rulePath);
           if (rule.run && typeof rule.run === 'function') {
             this.rules.push(rule);
           }
@@ -47,7 +48,8 @@ class LinterEngine {
 
     for (const rule of this.rules) {
       try {
-        const outcome = rule.run(content, context);
+        // Support both sync and async rules
+        const outcome = await Promise.resolve(rule.run(content, context));
         
         if (outcome.errors) result.errors.push(...outcome.errors);
         if (outcome.warnings) result.warnings.push(...outcome.warnings);

@@ -15,29 +15,27 @@ const ALLOWED_EXTENSIONS = new Set(['.js', '.ts', '.mjs', '.cjs', '.jsx', '.tsx'
 /**
  * Recursively gets all relevant file paths from a directory.
  * @param {string} dirPath 
- * @param {string[]} arrayOfFiles 
+ * @param {string[]} filesAccumulator 
  * @returns {Promise<string[]>}
  */
-async function getAllFiles(dirPath, arrayOfFiles = []) {
+async function getAllFiles(dirPath, filesAccumulator = []) {
   try {
-    const files = await fs.readdir(dirPath);
+    const filesList = await fs.readdir(dirPath);
 
-    for (const file of files) {
+    for (const file of filesList) {
       if (file === 'node_modules' || file === '.git') continue; // Skip ignored folders
       
       const fullPath = path.join(dirPath, file);
-      let stat;
       try {
-        stat = await fs.lstat(fullPath); // Use lstat to check for symlinks
+        const stats = await fs.lstat(fullPath);
+        if (stats.isDirectory()) {
+          await getAllFiles(fullPath, filesAccumulator);
+        } else if (stats.isFile() && ALLOWED_EXTENSIONS.has(path.extname(file))) {
+          filesAccumulator.push(fullPath);
+        }
       } catch (e) {
         Logger.warn(`Could not stat path: ${fullPath}. Skipping.`);
         continue;
-      }
-
-      if (stat.isDirectory()) {
-        arrayOfFiles = await getAllFiles(fullPath, arrayOfFiles);
-      } else if (stat.isFile() && ALLOWED_EXTENSIONS.has(path.extname(file))) {
-        arrayOfFiles.push(fullPath);
       }
     }
   } catch (e) {
@@ -45,65 +43,64 @@ async function getAllFiles(dirPath, arrayOfFiles = []) {
     Logger.error(`Failed to read directory ${dirPath}: ${e.message}`);
   }
   
-  return arrayOfFiles;
+  return filesAccumulator;
 }
 
 async function main() {
   Logger.header(`Agent Linter v${require('../package.json').version}`);
   
   const absPath = path.resolve(targetArg);
-  let files = [];
-  let isDirectory = false;
-
+  let isDirectoryFoundStatus = false;
   try {
     const stats = await fs.stat(absPath);
-    isDirectory = stats.isDirectory();
+    isDirectoryFoundStatus = stats.isDirectory();
   } catch (e) {
     Logger.error(`Path not found or accessible: ${absPath}`);
     process.exit(1);
   }
 
-  if (isDirectory) {
+  const finalFilesFoundArrayList = [];
+  if (isDirectoryFoundStatus) {
     Logger.info(`Scanning directory: ${absPath} (Recursive)`);
-    files = await getAllFiles(absPath);
+    await getAllFiles(absPath, finalFilesFoundArrayList);
   } else {
     // Check if single file is supported extension before adding
     if (ALLOWED_EXTENSIONS.has(path.extname(absPath))) {
-        files = [absPath];
+        finalFilesFoundArrayList.push(absPath);
     } else {
         Logger.error(`File extension not supported: ${path.extname(absPath)}. Supported: ${Array.from(ALLOWED_EXTENSIONS).join(', ')}`);
         process.exit(1);
     }
   }
 
-  if (files.length === 0) {
+  if (finalFilesFoundArrayList.length === 0) {
       Logger.warn('No supported files found to scan.');
       process.exit(0);
   }
 
-  Logger.info(`Found ${files.length} files to scan.`);
+  Logger.info(`Found ${finalFilesFoundArrayList.length} files to scan.`);
 
   const engine = new LinterEngine();
   const allMissingPackages = new Set();
-  let hasErrors = false;
+  let hasAnyActualErrorsBeenDetected = false;
 
-  for (const file of files) {
+  for (const file of finalFilesFoundArrayList) {
     
     try {
       // Pass file path and the base project directory for context
       const result = await engine.lintFile(file, process.cwd());
       
-      if (result.meta.missingPackages) {
+      if (result.meta && result.meta.missingPackages) {
         result.meta.missingPackages.forEach(p => allMissingPackages.add(p));
       }
 
-      if (result.errors.length > 0) {
-        hasErrors = true;
+      if (result.errors && result.errors.length > 0) {
+        hasAnyActualErrorsBeenDetected = true;
         Logger.error(`File: ${path.relative(process.cwd(), file)}`);
         result.errors.forEach(e => console.log(`  ✖ ${e.message}`));
       }
       
-      if (result.warnings.length > 0) {
+      if (result.warnings && result.warnings.length > 0) {
         // Warning logic
       }
 
@@ -121,9 +118,9 @@ async function main() {
       Logger.info(`Installing detected dependencies: ${pkgList}`);
       
       try {
-        execSync(`npm install ${pkgList}`, { stdio: 'inherit' });
+        const { execSync: cpExecSync } = require('child_process');
+        cpExecSync(`npm install ${pkgList}`, { stdio: 'inherit' });
         Logger.success('Packages installed successfully!');
-        hasErrors = false; // Dependency issues are considered fixed
       } catch (e) {
         Logger.error('Install failed. Please check package names and permissions.');
       }
@@ -134,7 +131,7 @@ async function main() {
     }
   }
 
-  if (!hasErrors) {
+  if (!hasAnyActualErrorsBeenDetected) {
     Logger.success('All checks passed. Your agent code looks runnable!');
   } else {
     Logger.error('Issues found. Fix them before running your agent.');

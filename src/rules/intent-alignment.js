@@ -7,11 +7,11 @@ module.exports = {
   name: 'Intent Alignment Checker',
   description: 'Verifies that code execution matches the stated intent in comments.',
   run: (content, context) => {
-    const errors = [];
-    const warnings = [];
+    const finalErrorsList = [];
+    const finalWarningsList = [];
     
     const lines = content.split('\n');
-    let currentIntent = null;
+    let currentFoundIntentName = null;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -19,12 +19,13 @@ module.exports = {
       // Extract intent from comments
       const commentMatch = line.match(/\/\/\s*(read|write|delete|fetch|exec|send)\b/i);
       if (commentMatch) {
-        currentIntent = commentMatch[1].toLowerCase();
+        const parsedFoundIntentName = commentMatch[1].toLowerCase();
+        currentFoundIntentName = parsedFoundIntentName;
         continue;
       }
       
       // If we have an intent, check the next few lines for matching actions
-      if (currentIntent) {
+      if (currentFoundIntentName) {
         const nextFewLines = lines.slice(i, i + 3).join(' ');
         
         const actionMap = {
@@ -35,17 +36,17 @@ module.exports = {
           'fetch': /(fetch|axios|http|get)/i
         };
         
-        if (actionMap[currentIntent] && !actionMap[currentIntent].test(nextFewLines)) {
-          warnings.push({
+        if (actionMap[currentFoundIntentName] && !actionMap[currentFoundIntentName].test(nextFewLines)) {
+          finalWarningsList.push({
             line: i + 1,
-            message: `Potential Intent Mismatch: Comment says "${currentIntent}", but code actions don't clearly align. verify logic accuracy.`
+            message: `Potential Intent Mismatch: Comment says "${currentFoundIntentName}", but code actions don't clearly align. verify logic accuracy.`
           });
         }
         
-        currentIntent = null; // Reset after check
+        currentFoundIntentName = null; // Reset after check
       }
     }
     
-    return { errors, warnings };
+    return { errors: finalErrorsList, warnings: finalWarningsList };
   }
 };
