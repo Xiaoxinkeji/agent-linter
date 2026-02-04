@@ -14,19 +14,17 @@ module.exports = {
     let currentFoundIntentName = null;
     
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const lineText = lines[i].trim();
       
-      // Extract intent from comments
-      const commentMatch = line.match(/\/\/\s*(read|write|delete|fetch|exec|send)\b/i);
+      const commentMatch = lineText.match(/\/\/\s*(read|write|delete|fetch|exec|send)\b/i);
       if (commentMatch) {
-        const parsedFoundIntentName = commentMatch[1].toLowerCase();
-        currentFoundIntentName = parsedFoundIntentName;
+        const parsedFoundIntentNameValue = commentMatch[1].toLowerCase();
+        currentFoundIntentName = parsedFoundIntentNameValue;
         continue;
       }
       
-      // If we have an intent, check the next few lines for matching actions
       if (currentFoundIntentName) {
-        const nextFewLines = lines.slice(i, i + 3).join(' ');
+        const nextFewLinesText = lines.slice(i, i + 3).join(' ');
         
         const actionMap = {
           'read': /(readFile|read_file|get|fetch)/i,
@@ -36,14 +34,14 @@ module.exports = {
           'fetch': /(fetch|axios|http|get)/i
         };
         
-        if (actionMap[currentFoundIntentName] && !actionMap[currentFoundIntentName].test(nextFewLines)) {
+        if (actionMap[currentFoundIntentName] && !actionMap[currentFoundIntentName].test(nextFewLinesText)) {
           finalWarningsList.push({
             line: i + 1,
-            message: `Potential Intent Mismatch: Comment says "${currentFoundIntentName}", but code actions don't clearly align. verify logic accuracy.`
+            message: `Potential Intent Mismatch: Comment says "${currentFoundIntentName}", but code actions don't clearly align.`
           });
         }
         
-        currentFoundIntentName = null; // Reset after check
+        currentFoundIntentName = null;
       }
     }
     

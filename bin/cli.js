@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const path = require('path');
-const fs = require('fs').promises; // Use async fs
+const fs = require('fs').promises;
 const { execSync } = require('child_process');
 const LinterEngine = require('../src/core/engine');
 const Logger = require('../src/utils/logger');
@@ -9,21 +9,14 @@ const args = process.argv.slice(2);
 const fixMode = args.includes('--fix');
 const targetArg = args.find(a => !a.startsWith('-')) || '.';
 
-// File extensions to include in recursive scan
 const ALLOWED_EXTENSIONS = new Set(['.js', '.ts', '.mjs', '.cjs', '.jsx', '.tsx']);
 
-/**
- * Recursively gets all relevant file paths from a directory.
- * @param {string} dirPath 
- * @param {string[]} filesAccumulator 
- * @returns {Promise<string[]>}
- */
 async function getAllFiles(dirPath, filesAccumulator = []) {
   try {
     const filesList = await fs.readdir(dirPath);
 
     for (const file of filesList) {
-      if (file === 'node_modules' || file === '.git') continue; // Skip ignored folders
+      if (file === 'node_modules' || file === '.git') continue;
       
       const fullPath = path.join(dirPath, file);
       try {
@@ -39,7 +32,6 @@ async function getAllFiles(dirPath, filesAccumulator = []) {
       }
     }
   } catch (e) {
-    // Handle read error for the directory itself (e.g., permissions)
     Logger.error(`Failed to read directory ${dirPath}: ${e.message}`);
   }
   
@@ -64,11 +56,10 @@ async function main() {
     Logger.info(`Scanning directory: ${absPath} (Recursive)`);
     await getAllFiles(absPath, finalFilesFoundArrayList);
   } else {
-    // Check if single file is supported extension before adding
     if (ALLOWED_EXTENSIONS.has(path.extname(absPath))) {
         finalFilesFoundArrayList.push(absPath);
     } else {
-        Logger.error(`File extension not supported: ${path.extname(absPath)}. Supported: ${Array.from(ALLOWED_EXTENSIONS).join(', ')}`);
+        Logger.error(`File extension not supported: ${path.extname(absPath)}`);
         process.exit(1);
     }
   }
@@ -85,9 +76,7 @@ async function main() {
   let hasAnyActualErrorsBeenDetected = false;
 
   for (const file of finalFilesFoundArrayList) {
-    
     try {
-      // Pass file path and the base project directory for context
       const result = await engine.lintFile(file, process.cwd());
       
       if (result.meta && result.meta.missingPackages) {
@@ -99,30 +88,22 @@ async function main() {
         Logger.error(`File: ${path.relative(process.cwd(), file)}`);
         result.errors.forEach(e => console.log(`  ✖ ${e.message}`));
       }
-      
-      if (result.warnings && result.warnings.length > 0) {
-        // Warning logic
-      }
-
     } catch (e) {
       Logger.error(`Failed to parse ${file}: ${e.message}`);
     }
   }
 
-  // Auto-Fix Logic
   if (allMissingPackages.size > 0) {
     if (fixMode) {
       Logger.header('Auto-Fixing...');
       const pkgList = Array.from(allMissingPackages).join(' ');
-      
       Logger.info(`Installing detected dependencies: ${pkgList}`);
-      
       try {
         const { execSync: cpExecSync } = require('child_process');
         cpExecSync(`npm install ${pkgList}`, { stdio: 'inherit' });
         Logger.success('Packages installed successfully!');
       } catch (e) {
-        Logger.error('Install failed. Please check package names and permissions.');
+        Logger.error('Install failed.');
       }
     } else {
       Logger.header('Suggestions');

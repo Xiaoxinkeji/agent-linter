@@ -2,39 +2,40 @@
 module.exports = {
     id: 'moltbook-coherence-check',
     name: 'Moltbook Coherence Check (RVO)',
-    description: 'Enforces strict variable declaration (const/let) and discourages global pollution, a key principle of Agent Coherence.',
+    description: 'Enforces strict variable declaration (const/let) and discourages global pollution.',
 
     run: (content, context) => {
         const errors = [];
         
-        // 1. Check for global variable declarations (missing const/let/var)
-        // Optimized regex: Matches start of line or space, but looks for assignments like 'varName = value'
-        // without a leading declaration.
-        const globalAssignmentMatches = content.matchAll(/(?:\n|^)(\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=[^=]/gm);
+        // Match assignments that start with indentation and are NOT preceded by a declaration keyword
+        const globalAssignmentMatches = content.matchAll(/(?:\n|^)(\s+)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=[^=]/gm);
         
-        for (const match of globalAssignmentMatches) {
-            const varName = match[2];
-            const leadingSpace = match[1];
+        const keywords = ['const', 'let', 'var', 'if', 'while', 'for', 'return', 'this', 'else', 'try', 'catch', 'finally', 'module', 'exports', 'function', 'class'];
 
-            // If it's indented, it's very likely inside a function/block and should have a declaration
-            // If it's not indented, it might be a top-level export or legitimate global (discouraged)
+        for (const match of globalAssignmentMatches) {
+            const indentation = match[1];
+            const variableName = match[2];
             
-            // Skip common keywords or context where assignments are valid without let/const (like exports)
-            if (['module', 'exports', 'function', 'class', 'const', 'let', 'var', 'if', 'while', 'for', 'return', 'this'].includes(varName)) {
+            if (keywords.includes(variableName)) {
                 continue;
             }
             
-            // Only report if it's indented (likely a missing local declaration)
-            if (leadingSpace.length > 0) {
-              errors.push({
-                  message: `Coherence Error: Variable '${varName}' is not explicitly declared with 'const', 'let', or 'var'. This risks global state pollution and violates Monotonicity/Coherence principles.`,
-                  line: 0 // Simplification
-              });
+            // Check if the preceding text on that line (after indentation) contains a declaration
+            // Since the regex starts at \n or ^, we check if the declaration is missing
+            const lines = content.split('\n');
+            const matchingLine = lines.find(l => l.includes(`${variableName} =`) || l.includes(`${variableName}=`));
+            
+            if (matchingLine) {
+                const trimmed = matchingLine.trim();
+                const isDeclared = trimmed.startsWith('const ') || trimmed.startsWith('let ') || trimmed.startsWith('var ');
+                
+                if (!isDeclared) {
+                    errors.push({
+                        message: `Coherence Error: Variable '${variableName}' is not explicitly declared with 'const', 'let', or 'var'.`,
+                    });
+                }
             }
         }
-
-        // We must rely on AST for reliable return checks. Skipping for regex-based linter.
-        // Simplified coherence check complete.
 
         return { errors, meta: {} };
     }
